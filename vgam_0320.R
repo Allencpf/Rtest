@@ -16,7 +16,7 @@ library(officer)
 library(VGAMdata)
 
 Mdata <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/cpf/paper_writting/NHTSA/data/Output_fars/dftwo0226.csv")
-
+# ls d
 ##########data process#########
 attach(Mdata)
 

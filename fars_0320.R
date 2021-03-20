@@ -1,4 +1,5 @@
 ##############Package###############
+###code in 0320
 install.packages("mlogit")
 install.packages("VGAM")
 install.packages("foreign")
