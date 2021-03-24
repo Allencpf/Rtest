@@ -13,10 +13,10 @@ library(texreg)
 library(xtable)
 library(flextable)
 library(officer)
+library(VGAM)
 library(VGAMdata)
 
-Mdata <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/cpf/paper_writting/NHTSA/data/Output_fars/dftwo0226.csv")
-# ls d
+Mdata <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/Output_fars/dftwo0226.csv")
 ##########data process#########
 attach(Mdata)
 
@@ -273,22 +273,191 @@ Mdata1$ROLLOVER_=factor(Mdata1$ROLLOVER_,levels = c(0,1))
 # this is codeed in 0320
 library(VGAM)
 library(VGAMdata)
-fit.npom <- vglm(INJ_SEV ~ REST_USE, cumulative(parallel = TRUE), data= Mdata1)
+
+
+
+
+
+
+
+
+
+
+######6.1 2008 World Fly Fishing Chanpionships#########
+
+library(VGAM)
+library(VGAMdata)
+data(wffc, package = "VGAMdata")
+head(wffc.nc, 5) ## nc stands for numbers caught, f for factor
+
 
 fnc <- transform(wffc.nc, finame = factor(iname), fsector = factor(sector),
                  fday = factor(ceiling(session/2)), mornaft = 1 - (session%%2),
-                 fbeatboat = factor(beatboat))
+                 fbeatboat = factor(beatboat)) ## ceiling function 取整进一
 
-m <- with(fnc, !is.element(comid,c(99,72,80,93, 45, 71, 97, 78))) ## 去除掉cmoid列中包含那些数字的行
-fnc <- fnc[m,]
+fnc <- fnc[with(fnc, !is.element(comid, c(99, 72, 80, 93,
+                                          + 45, 71, 97, 78))), ] ##去掉fnc$cmoid列里有那些数字的行
 
-fnc <- transform(fnc, ordnum = ifelse(numbers <=2, "few", ifelse(numbers <=10, "more", "most")))
+fnc <- transform(fnc, ordnum = ifelse(numbers <= 2, "few",
+                                      ifelse(numbers <= 10, "more", "most"))) ###few <=2; 2<more<=10; "most > 10
 
-fnc$ordnum <- ordered(fnc$ordnum, levels = c("few", "more", "most"))
+fnc$ordnum <- ordered(fnc$ordnum, levels = c("few", "more", "most")) # 按few, more, most 的顺序排序
 
-### fit a proportional odds model
-fit.pom <- vglm(ordnum ~ fsector + mornaft + fday + finame, 
-                family = cumulative(parallel = TRUE, reverse = TRUE), data=fnc)
-### 检查拟合结果是和原数据对应正确的
-head(fit.pom@y, 3)
-colSums(fit.pom@y)
+
+fit.pom <- vglm(ordnum ~ fsector + mornaft + fday + finame,
+                family = cumulative(parallel = TRUE, reverse = TRUE), data = fnc)
+
+head(coef(fit.pom, matrix = TRUE), 10)
+
+
+##########13.2 Two bivariate distribution############
+
+data(xs.nz, package = "VGAMdata")
+
+M.euro <- subset(xs.nz, sex =="M" & age < 70 & ethnicity =="European")
+M.euro <- na.omit(M.euro[, c("age", "dbp", "sbp")]) # dbp舒张压/sdp收缩压
+
+fit.N2 <- vgam(cbind(dbp, sbp) ~ s(age, df=c(4,4,3,3,3)),
+               binormal(zero=NULL), data=M.euro)
+
+mycl <- c("blue", "limegreen")
+plot(fit.N2, which.cf = 1:2, overlay = TRUE, se = TRUE, lcol = mycl, scol = mycl) 
+plot(fit.N2, which.cf = 3:4, overlay = TRUE, se = TRUE, lcol = mycl, scol = mycl)
+plot(fit.N2, which.cf = 5, overlay = TRUE, se = TRUE, lcol = mycl, scol = mycl)
+
+#########10.2.3.1 SUR example
+Olist <- list("(Intercept)" = diag(2),
+              "capital.g" = rbind(1,0),
+              "value.g" = rbind(1,0),
+              "capital.w" = rbind(0,1),
+              "value.w" = rbind(0,1))
+zef <- vglm(cbind(invest.g, invest.w) ~ capital.g + value.g + capital.w + value.w,
+            SURff(divisor = "sqrt"), data = gew,
+            constraints = Olist, maxit = 1, epsilon = 1e-11)
+zef1 <- vglm(cbind(invest.g, invest.w) ~ capital.g + value.g + capital.w + value.w,
+            SURff(divisor = "sqrt"), data = gew,
+            constraints = Olist, maxit = 1, epsilon = 1e-11, mle.normal = TRUE)
+
+Gew <- transform(gew, Capital = capital.g, Value = value.g)
+fitp1 <- vglm(cbind(invest.g, invest.w) ~ Capital + Value,
+              SURff(parallel = TRUE), data = Gew, maxit = 1, 
+              xij = list(Capital ~ capital.g + capital.w - 1,
+                         Value ~ value.g + value.w - 1), 
+              form2 = ~ capital.g + value.g + capital.w + value.w + Capital + Value)
+
+
+set.seed(123); n<-100
+bdata <- data.frame(x2 = runif(n), x3 = runif(n))
+bdata <- transform(bdata, y1 = rnorm(n, 1 + 2 * x2),
+                          y2 = rnorm(n, 3 + 4 * x2))
+
+fit1 <- vglm(cbind(y1, y2) ~ x2, binormal(eq.sd = TRUE), data=bdata)
+nsim <-1000
+my.sims <- simulate(fit1, nsim = nsim)
+dim(my.sims)
+
+nn <- 1000
+ymat <- rbinormcop(n = nn, rho = rhobitlink(-0.9, inverse = TRUE))
+bdata <- data.frame(y1 = ymat[,1], y2 = ymat[,2],
+                    y3 = ymat[,1], y4 = ymat[,2], x2 = runif(nn))
+fit1 <- vglm(cbind(y1, y2, y3, y4) ~ 1,
+             fam = binormalcop, crit = "coef", data = bdata, trace = TRUE)
+
+
+
+hspider[, 1:6] <- scale(hspider[, 1:6])
+p1ut.hs <- cqo(cbind(Alopacce, Alopcune, Alopfabr, Arctlute, Arctperi,
+                     Auloalbi, Pardlugu, Pardmont, Pardnigr, Pardpull,
+                     Trocterr, Zoraspin) ~
+                 WaterCon + BareSand + FallTwig + CoveMoss + CoveHerb + ReflLux, poissonff, data = hspider, eq.toler = FALSE, trace = FALSE)
+
+
+#######my injury data#####
+##13 bivariate distribution
+fit <- vglm(cbind(INJ_SEV, REST_USE) ~ AGE1, binormal(eq.sd = TRUE), data=Mdata1, trace=TRUE)
+
+fita <- vgam(cbind(INJ_SEV, REST_USE) ~ s(AGE, df = c(4,4,3,3,3)),
+             binormal(zero=NULL), data = Mdata1)
+fita1 <- vgam(cbind(INJ_SEV, REST_USE) ~ s(AGE, df = c(4,4,3,3,3)),
+             binormal(zero=NULL, eq.sd = TRUE), data = Mdata1)
+
+mycl <- c("blue", "limegreen")
+plot(fita1, which.cf = 1:2, overlay = TRUE, se = TRUE, lcol = mycl, scol = mycl) 
+plot(fita1, which.cf = 3:4, overlay = TRUE, se = TRUE, lcol = mycl, scol = mycl)
+plot(fita1, which.cf = 5, overlay = TRUE, se = TRUE, lcol = mycl, scol = mycl)
+########10.2.3 seemingly unrelated regressions
+
+Hlist <- list("(Intercept)" = diag(2),
+              "AGE1" = rbind(1,0),
+              "DR_DRINK" = rbind(1,0),
+              "AGE1_" = rbind(0,1),
+              "DR_DRINK_" = rbind(0,1))
+fit.us <- vglm(cbind(DIE, DIE_) ~ AGE1 + DR_DRINK + AGE1_ + DR_DRINK_,
+               SURff(divisor = "sqrt"), data = Mdata1,
+               constraints = Hlist, maxit=1, epsilon = 1e-11)
+
+fit.us1 <- vglm(cbind(INJ_SEV, INJ_SEV_) ~ AGE1 + DR_DRINK + AGE1_ + DR_DRINK_,
+               SURff(divisor = "sqrt"), data = Mdata1,
+               constraints = Hlist, maxit=1, epsilon = 1e-11)
+Hlist1 <- list("(Intercept)" = diag(4),
+               "AGE1" = matrix(c(1,0,0,0,0,1,0,0),4,2),
+               "DR_DRINK" = matrix(c(1,0,0,0,0,1,0,0),4,2),
+               "AGE1_" =matrix(c(0,0,1,0,0,0,0,1),4,2),
+               "DR_DRINK_" = matrix(c(0,0,1,0,0,0,0,1),4,2))
+fit.us2 <- vglm(cbind(INJ_SEV,REST_USE,INJ_SEV_,REST_USE_) ~ AGE1 + DR_DRINK + AGE1_ + DR_DRINK_,
+                SURff(divisor = "sqrt"), data = Mdata1, 
+                constraints = Hlist1, maxit=1, epsilon = 1e-11)
+fit.us3 <- vglm(cbind(INJ_SEV,REST_USE,INJ_SEV_,REST_USE_) ~ AGE1 + DR_DRINK + AGE1_ + DR_DRINK_,
+                SURff(divisor = "sqrt"), data = Mdata1, paralle = TRUE,
+                constraints = Hlist1, maxit=1, epsilon = 1e-11)
+
+Hlist2 <- list("(Intercept)" = diag(4),
+               "s(AGE)" = matrix(c(1,0,0,0,0,1,0,0),4,2),
+               "DR_DRINK" = matrix(c(1,0,0,0,0,1,0,0),4,2),
+               "s(AGE_)" =matrix(c(0,0,1,0,0,0,0,1),4,2),
+               "DR_DRINK_" = matrix(c(0,0,1,0,0,0,0,1),4,2))
+fit.as <- vgam(cbind(INJ_SEV,REST_USE,INJ_SEV_,REST_USE_) ~ s(AGE) + DR_DRINK + s(AGE_) + DR_DRINK_,
+               SURff(divisor = "sqrt"), data = Mdata1,
+               constraints = Hlist2, maxit=1, epsilon = 1e-11, bf.maxit = 100)
+
+fit.as1 <- vgam(cbind(INJ_SEV,REST_USE,INJ_SEV_,REST_USE_) ~ s(AGE) + DR_DRINK + s(AGE_) + DR_DRINK_,
+               cumulative(parallel = TRUE, reverse = TRUE), data = Mdata1, 
+              maxit=1, epsilon = 1e-11, bf.maxit = 100)
+
+
+coef(fit.us, matrix=TRUE)
+coef(fit.us3, matrix=TRUE) # estimates 
+coef(fit.as, matrix=TRUE) # estimates 
+
+
+round(coef(fit.as, matrix=TRUE), digits = 4) # MLE
+round(sqrt(diag(vcov(fit.us2))), digits = 3) # SEs standard errors Std.error
+
+Sigma0.inv.mb <- head(weights(fit.as1, type="work"), 1)
+Sigma0.inv <- m2a(Sigma0.inv.mb, M = npred(fit.as1))[,,1]
+Sigma0.hat <- chol2inv(chol(Sigma0.inv))
+cov2cor(Sigma0.hat)  ## 计算phro 因变量之间的相关系数
+
+
+plot(as(fit.as, "vgam"), se = TRUE, scol = "blue", which.term = c("s(AGE)", s("AGE_")))
+
+plot(as(fit.as, "vgam"), se = TRUE, scol = "blue", which.term = c("s(AGE)", s("AGE_")), which.cf = 2)
+######14.1.1 Multinomial distribution
+
+
+######14.4 ordinal reponse
+fito <- vglm(INJ_SEV ~ AGE1 -1, cumulative(link = probitlink, reverse = TRUE, parallel = TRUE), data=Mdata1)
+fito1 <- vglm(cbind(INJ_SEV,REST_USE) ~ AGE1, cumulative(link = probitlink, reverse = TRUE, parallel = TRUE), data=Mdata1)
+
+fito1 <- vglm(cbind(DIE,DIE_) ~ AGE1 , family  =binom2.or, data=Mdata1)
+
+fitao <- vgam(INJ_SEV ~ s(AGE), cumulative(link = clogloglink), reverse = FALSE, paralle = TRUE, data = Mdata1)
+fitao1 <- vgam(INJ_SEV ~ s(AGE), cumulative(link = probitlink), reverse = TRUE, paralle = TRUE, data = Mdata1)
+
+
+
+
+
+
+
+
