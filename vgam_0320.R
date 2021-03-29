@@ -3,6 +3,7 @@ install.packages('stargazer') # stargazer可以整理R输出为LaTeX, HTML以及
 install.packages("xtable")
 install.packages("flextable")
 install.packages("VGAMdata")
+install.packages("MCMCglmm")
 
 ###########library############
 library(readr)
@@ -15,11 +16,11 @@ library(flextable)
 library(officer)
 library(VGAM)
 library(VGAMdata)
-
+library(data.table) 
+library(MCMCglmm)
 Mdata <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/Output_fars/dftwo0226.csv")
 ##########data process#########
 attach(Mdata)
-
 Mdata<-subset(Mdata,INJ_SEV<5 & INJ_SEV_<5)                   #table(Mdata$ROLLOVER) 
 Mdata<-subset(Mdata,ROLLOVER_x<9 & ROLLOVER_x_<9)                   #table(Mdata$ROLLOVER)         
 Mdata<-subset(Mdata,AIR_BAG>0 & AIR_BAG<28 & AIR_BAG_>0 & AIR_BAG_<28)       #table(Mdata$AIR_BAG)
@@ -187,8 +188,49 @@ Mdata1$DR_DRINK=factor(Mdata1$DR_DRINK,levels = c(0,1))
 
 ### INJ_SEV2
 Mdata1$DR_DRINK_=factor(Mdata1$DR_DRINK_,levels = c(0,1))
+#-----------安全气囊---------------------#
+Mdata1<-subset(Mdata1,AIR_BAG>0 & AIR_BAG<28 & AIR_BAG_>0 & AIR_BAG_<28)       #table(Mdata$AIR_BAG)
 
+subcrit1=matrix(0,nrow(Mdata1),1)
+for (i in 1:nrow(Mdata1)){
+  if (Mdata1$AIR_BAG[i]==20){subcrit1[i]=0} #*Not Deployed
+  else {subcrit1[i]=1} #Deployed
+}
 
+Mdata1$AIR_BAG<-subcrit1
+rm(subcrit1)
+Mdata1$AIR_BAG=factor(Mdata1$AIR_BAG,levels = c(0,1))
+## INJ_SEV2
+subcrit1=matrix(0,nrow(Mdata1),1)
+for (i in 1:nrow(Mdata1)){
+  if (Mdata1$AIR_BAG_[i]==20){subcrit1[i]=0} #*Not Deployed
+  else {subcrit1[i]=1} #Deployed
+}
+
+Mdata1$AIR_BAG_<-subcrit1
+rm(subcrit1)
+Mdata1$AIR_BAG_=factor(Mdata1$AIR_BAG_,levels = c(0,1))
+
+#-----------弹射---------------------#
+Mdata1<-subset (Mdata1,EJECTION<7 & EJECTION_<7)                   #table(Mdata$EJECTION)
+
+subcrit2=matrix(0,nrow(Mdata1),1)
+for (i in 1:nrow(Mdata1)){
+  if (Mdata1$EJECTION[i]==0) {subcrit2[i]=0} #*Not Ejected
+  else  {subcrit2[i]=1} #Ejected
+}
+Mdata1$EJECTION<-subcrit2
+rm(subcrit2)
+Mdata1$EJECTION=factor(Mdata1$EJECTION,levels = c(0,1))
+###INJ_SEV2
+subcrit2=matrix(0,nrow(Mdata1),1)
+for (i in 1:nrow(Mdata1)){
+  if (Mdata1$EJECTION_[i]==0) {subcrit2[i]=0} #*Not Ejected
+  else  {subcrit2[i]=1} #Ejected
+}
+Mdata1$EJECTION_<-subcrit2
+rm(subcrit2)
+Mdata1$EJECTION_=factor(Mdata1$EJECTION_,levels = c(0,1))
 
 
 #-----------DIE 是否死亡---------------------#
@@ -268,22 +310,12 @@ rm(SEX0)
 Mdata1$ROLLOVER_=factor(Mdata1$ROLLOVER_,levels = c(0,1))
 
 
-#######VGAM#########
 
+#######VGAM#########
 # this is codeed in 0320
 library(VGAM)
 library(VGAMdata)
-
-
-
-
-
-
-
-
-
-
-######6.1 2008 World Fly Fishing Chanpionships#########
+######6.1 2008 World Fly Fishing Chanpionships
 
 library(VGAM)
 library(VGAMdata)
@@ -313,6 +345,7 @@ head(coef(fit.pom, matrix = TRUE), 10)
 ##########13.2 Two bivariate distribution############
 
 data(xs.nz, package = "VGAMdata")
+
 
 M.euro <- subset(xs.nz, sex =="M" & age < 70 & ethnicity =="European")
 M.euro <- na.omit(M.euro[, c("age", "dbp", "sbp")]) # dbp舒张压/sdp收缩压
@@ -371,6 +404,15 @@ p1ut.hs <- cqo(cbind(Alopacce, Alopcune, Alopfabr, Arctlute, Arctperi,
                      Trocterr, Zoraspin) ~
                  WaterCon + BareSand + FallTwig + CoveMoss + CoveHerb + ReflLux, poissonff, data = hspider, eq.toler = FALSE, trace = FALSE)
 
+########function: binomialff
+fitbion <- vglm(cbind(INJ_SEV, REST_USE) ~ AGE1,binomialff(multiple.responses = TRUE), data = Mdata1 )
+
+
+
+
+###########14.2.3 Sterotype model (reduced-rank multinomial logit model RR-MLM)############
+fit2.ms <- 
+
 
 #######my injury data#####
 ##13 bivariate distribution
@@ -425,10 +467,23 @@ fit.as1 <- vgam(cbind(INJ_SEV,REST_USE,INJ_SEV_,REST_USE_) ~ s(AGE) + DR_DRINK +
               maxit=1, epsilon = 1e-11, bf.maxit = 100)
 
 
+
+
+Hlist3 <- list("(Intercept)" = diag(4),
+               "AGE1" = matrix(c(1,1,0,0,0,0,1,1),4,2),
+               "DR_DRINK" = matrix(c(1,1,0,0,0,0,1,1),4,2),
+               "AGE1_" =matrix(c(1,1,0,0,0,0,1,1),4,2),
+               "DR_DRINK_" = matrix(c(1,1,0,0,0,0,1,1),4,2))
+fit.ns <- vglm(cbind(REST_USE, REST_USE_, INJ_SEV, INJ_SEV_) ~ AGE1 + DR_DRINK + AGE1_ + DR_DRINK_,
+                family = binomialff(multiple.responses = TRUE), data = Mdata1)
+  
+  
+
+
 coef(fit.us, matrix=TRUE)
 coef(fit.us3, matrix=TRUE) # estimates 
 coef(fit.as, matrix=TRUE) # estimates 
-
+linkfun(fit.as)
 
 round(coef(fit.as, matrix=TRUE), digits = 4) # MLE
 round(sqrt(diag(vcov(fit.us2))), digits = 3) # SEs standard errors Std.error
@@ -446,7 +501,7 @@ plot(as(fit.as, "vgam"), se = TRUE, scol = "blue", which.term = c("s(AGE)", s("A
 
 
 ######14.4 ordinal reponse
-fito <- vglm(INJ_SEV ~ AGE1 -1, cumulative(link = probitlink, reverse = TRUE, parallel = TRUE), data=Mdata1)
+fito <- vglm(INJ_SEV ~ AGE1 ,cumulative(link = probitlink, reverse = TRUE, parallel = TRUE), data=Mdata1)
 fito1 <- vglm(cbind(INJ_SEV,REST_USE) ~ AGE1, cumulative(link = probitlink, reverse = TRUE, parallel = TRUE), data=Mdata1)
 
 fito1 <- vglm(cbind(DIE,DIE_) ~ AGE1 , family  =binom2.or, data=Mdata1)
@@ -454,10 +509,110 @@ fito1 <- vglm(cbind(DIE,DIE_) ~ AGE1 , family  =binom2.or, data=Mdata1)
 fitao <- vgam(INJ_SEV ~ s(AGE), cumulative(link = clogloglink), reverse = FALSE, paralle = TRUE, data = Mdata1)
 fitao1 <- vgam(INJ_SEV ~ s(AGE), cumulative(link = probitlink), reverse = TRUE, paralle = TRUE, data = Mdata1)
 
+fit1 <- vglm(cbind(INJ_SEV, INJ_SEV_) ~ AGE1,bilogistic, data = Mdata1, trace = TRUE)# Sometimes a good idea
+
+fitao3 <- vglm(cbind(INJ_SEV, INJ_SEV_) ~ AGE1, family = bilogistic, data = Mdata1)
+fitao5 <- vgam(cbind(INJ_SEV, INJ_SEV_,
+                  REST_USE, REST_USE_) ~ s(AGE, df = 5),
+            binom2.or(zero = 3), data = Mdata1, trace = TRUE)
+
+fitao4 <- vglm(cbind(INJ_SEV, INJ_SEV_,
+                     REST_USE, REST_USE_) ~ AGE1,
+               binom2.or(), data = Mdata1, trace = TRUE)
+
+update(fitao3, . ~ . + REST_USE)
+
+
+Mdata2 <- Mdata1[sort.list(with(Mdata1, unicid)), ]
+fitao6 <- vglm(cbind(INJ_SEV, REST_USE) ~ AGE1,
+               binormal(eq.sd = TRUE), data = Mdata2)
+
+Mdata2$INJ_SEV <- Mdata2$INJ_SEV +1
+Mdata2$INJ_SEV_ <- Mdata2$INJ_SEV_ +1
+Mdata2$REST_USE <- as.numeric(Mdata2$REST_USE) +1
+Mdata2$REST_USE_ <- as.numeric(Mdata2$REST_USE_) +1
+fitao7 <- vglm(cbind(INJ_SEV,INJ_SEV_,REST_USE, REST_USE_)~ AGE1,
+               binormalcop(lrho = "logloglink") ,data = Mdata2, crit = "coef", trace = TRUE)
+
+fitao8 <- vglm(cbind(y1,y2, y3, y4) ~ x2, binormalcop, data = bdata)
+
+save.image("myprocess_0324")
+q()
+load("myprocess_0324")
+
+ndata <- data.frame(x2 = runif(nn <- 200))
+ndata <- transform(ndata, y1 = rnbinom(nn, mu = exp(1+x2), size = exp(1)))
+ndata <- transform(ndata, y2 = rnbinom(nn, mu = exp(2+x2), size = exp(1)))
+fit1 <- vglm(cbind(y1, y2) ~ x2, negbinomial, data = ndata)
+head(fitted(fit1, type.fitted = "quantiles", percentiles = c(5, 25, 80)))
+
+
+
+############mvord ###########
+install.packages("mvord")
+
+library(mvord)
+data("data_cr", package = "mvord")
+head(data_cr, n = 3)
+res_cor_probit_simple <- mvord(formula = MMO2(rater1, rater2, rater3, + rater4) ~ 0 + LR + LEV + PR + RSIZE + BETA, data = data_cr)
+res_cor_logit <- mvord(formula = MMO2(rater1, rater2, rater3, rater4) ~ 0 + LR + LEV + PR + RSIZE + BETA, data = data_cr, link = mvlogit(),
+                       coef.constraints = cbind(LR = c(1, 1, 1, 1), LEV = c(1, 2, 3, 4),
+                                                PR = c(1, 1, 1, 1), RSIZE = c(1, 1, 1, 2), BETA = c(1, 1, 2, 3)),threshold.constraints = c(1, 1, 2, 3))
+
+
+fit.mvor <- mvord(formula = MMO2(INJ_SEV, INJ_SEV_) ~ 0 + AGE1+ DR_DRINK + DRUGS+ REST_USE +AIR_BAG + EJECTION + ROLLOVER + AGE1_ + DR_DRINK_+  DRUGS_ + REST_USE_ + AIR_BAG_+ EJECTION_ + ROLLOVER_ + MAN_COLL + TIME + WEATHER, data = Mdata1)
+fit.mvor3 <- mvord(formula = MMO2(INJ_SEV, INJ_SEV_) ~ 0 + AGE1+ DR_DRINK + DRUGS+ REST_USE +AIR_BAG + EJECTION + ROLLOVER + AGE1_ + DR_DRINK_+  DRUGS_ + REST_USE_ + AIR_BAG_+ EJECTION_ + ROLLOVER_ + MAN_COLL + TIME + WEATHER, 
+                   threshold.constraints = c(1,2),threshold.values = list(c(0,NA,NA,4), c(0,NA,NA,4)),
+                   link = mvlogit(),data = Mdata1)
+
+
+
+fit.mvor1 <- mvord(formula = MMO2(INJ_SEV, INJ_SEV_) ~ 0 + AGE1+ DR_DRINK + DRUGS+ REST_USE +AIR_BAG + EJECTION + ROLLOVER + AGE1_ + DR_DRINK_+  DRUGS_ + REST_USE_ + AIR_BAG_+ EJECTION_ + ROLLOVER_ + MAN_COLL + TIME + WEATHER, 
+                  data = Mdata1, threshold.constraints = c(1,2), link=mvlogit())
+
+fit.mvf <- mvord(formula = MMO2(INJ_SEV,INJ_SEV_,REST_USE, REST_USE_) ~ 0 + AGE1+ DR_DRINK + DRUGS +AIR_BAG + EJECTION + ROLLOVER + AGE1_ + DR_DRINK_+  DRUGS_  + AIR_BAG_+ EJECTION_ + ROLLOVER_ + MAN_COLL + TIME + WEATHER, 
+                   threshold.constraints = c(1,2,3,4),
+                   link = mvlogit(),data = Mdata1)
+
+fit.mvf1 <- mvord(formula = MMO2(INJ_SEV,INJ_SEV_,DR_DRINK, DR_DRINK_) ~ 0 + AGE1+ REST_USE + DRUGS +AIR_BAG + EJECTION + ROLLOVER + AGE1_ + REST_USE_+  DRUGS_  + AIR_BAG_+ EJECTION_ + ROLLOVER_ + MAN_COLL + TIME + WEATHER, 
+                 threshold.constraints = c(1,2,3,4),
+                 link = mvlogit(),data = Mdata1)
+
+
+
+names_constraints(formula = MMO2(INJ_SEV, INJ_SEV_) ~ 0 + AGE1+ DR_DRINK + DRUGS+ REST_USE +AIR_BAG + EJECTION + ROLLOVER + AGE1_ + DR_DRINK_+  DRUGS_ + REST_USE_ + AIR_BAG_+ EJECTION_ + ROLLOVER_ + MAN_COLL + TIME + WEATHER, data = Mdata1)
+
+fit.mvor1 <- mvord(formula = MMO2(INJ_SEV, INJ_SEV_) ~ 0 + AGE1 + REST_USE + AGE1_ + REST_USE_, data = Mdata1, coef.constraints = cbind(AGE11=c(1, 1),AGE12 = c(1,1), AGE13 = c(1,1),REST_USE1 = c(1, 1),
+                                                                                                                                        AGE1_1=c(1, 1), AGE1_2=c(1,1), AGE1_3 = c(1,1), REST_USE_1 = c(1,1)),threshold.constraints = c(1,2))
+
+fit.mvor2 <- mvord(formula = MMO2(INJ_SEV, INJ_SEV_) ~ 0 + AGE1 + REST_USE + AGE1_ + REST_USE_, data = Mdata1, coef.constraints = cbind(AGE11=c(1, NA),AGE12 = c(1,NA), AGE13 = c(1,NA),REST_USE1 = c(1, NA),
+                                                                                                                                        AGE1_1=c(NA, 1), AGE1_2=c(NA,1), AGE1_3 = c(NA,1), REST_USE_1 = c(NA,1)),threshold.constraints = c(1,2))
+
+fit.inj <- vglm(INJ_SEV ~ AGE1 + REST_USE , cumulative(link = probit, reverse = TRUE, parallel = TRUE), data = Mdata1)
+fit.inj_ <- vglm(INJ_SEV_ ~ AGE1_ + REST_USE_ , cumulative(link = probit, reverse = TRUE, parallel = TRUE), data = Mdata1)
+
+tt = xtable_to_flextable(xtable(summary(fit.inj)))
+cexf <- 1.8
+barplot(table(Mdata1$INJ_SEV),  ylim = c(0, 5000), las = 1, main = "INJ_SEV", 
+        cex.lab = cexf, cex.names = cexf, cex.main = 2, cex.axis = cexf, col=rgb(0.2, 0.4, 0.6, 0.6))
+
+barplot(table(Mdata1$INJ_SEV_),  ylim = c(0, 5000), las = 1, main = "INJ_SEV_", 
+        cex.lab = cexf, cex.names = cexf, cex.main = 2, cex.axis = cexf, col=rgb(0.2, 0.4, 0.6, 0.6))
+
+
+#############model MCMCglmm###########
+fitm1<-MCMCglmm(INJ_SEV ~ REST_USE + REST_USE_,
+                family = "threshold",
+                data = Mdata1, singular.ok = TRUE)
 
 
 
 
+#########统计结果输出#######
+capture.output(summary(fit.mvor), file = "/Users/cpf/Documents/paper/NHTSA/writting/pictures/双变量parall.txt" )
+capture.output(summary(fit.mvor1), file = "/Users/cpf/Documents/paper/NHTSA/writting/pictures/双变量交互.txt" )
+capture.output(summary(fit.mvor2), file = "/Users/cpf/Documents/paper/NHTSA/writting/pictures/双变量似不相关.txt" )
+capture.output(summary(fit.inj), file = "/Users/cpf/Documents/paper/NHTSA/writting/pictures/单变量inj1.txt" )
+capture.output(summary(fit.inj_), file = "/Users/cpf/Documents/paper/NHTSA/writting/pictures/单变量inj2.txt" )
 
-
-
+capture.output(summary(fit.mvf), file = "/Users/cpf/Documents/paper/NHTSA/writting/pictures/四变量fars.txt" )
