@@ -106,8 +106,8 @@ plot_grid(test.beta$DensityPlot, test.beta$QQPlot,    ##Figure 1-14. Shows densi
 
 set.seed(1234)
 y <- rnbinom(500, mu = 5, size = 2) 
-plot(testDistribution(y, "beta", starts = list(shape1 = .5 shape2 = .5)))
-plot(testDistribution(y, "nbinom"))
+plot(testDistribution(y, "poisson")) #图1-15。离散观测到的比例和以蓝色表示的Poisson的理论概率
+plot(testDistribution(y, "nbinom")) #图1-16。从负二项分布中观察到的具有理论概率的离散比例（以蓝色绘制）
 
 
 
