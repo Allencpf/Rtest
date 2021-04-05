@@ -4,9 +4,9 @@ library(data.table)
 
 load("~/Documents/paper/R_programming/Rdatabook/04690-0001-Data.rda") # load workspace
 
-acl <- as.data.table(da04690.0001)
+acl <- as.data.table(da04690.0001) 
 
-acl <- acl[, .( V1, V1801, V2101, V2064,
+acl <- acl[, .(V1, V1801, V2102, V2064,
   V3007, V2623, V2636, V2640,
   V2000,
   V2200, V2201, V2202,
@@ -24,7 +24,8 @@ setnames(acl, names(acl), c(
 ))
 
 acl[, ID := factor(ID)]
-acl[, SESCategory := factor(SESCategory)]
+acl[, SESCategory := factor(SESCategory, labels = c("1", "2", "3","4"))]
+
 acl[, SWL_W1 := SWL_W1 * -1]  # 使这一列变为负数
 
 saveRDS(acl, "advancedr_acl_data.RDS", compress = "xz")

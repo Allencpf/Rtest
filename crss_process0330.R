@@ -4,7 +4,8 @@ library(data.table)
 library(dplyr)
 
 
-
+df_v <- fread("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/CRSS/CRSS2016/VIOLATN.CSV")
+df_c <- fread("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/CRSS/CRSS2016/DISTRACT.CSV")
 dfp <- fread("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/output_crss/dfp20210330.csv")
 dfv <- fread("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/output_crss/dfv20210330.csv")
 dfa <- fread("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/output_crss/dfa20210330.csv")
@@ -30,4 +31,10 @@ df2 <- subset(dfpvvva, dfpvvva$VEH_NO == 2 | dfpvvva$VEH_NO == 3 | dfpvvva$VEH_N
 # df <- df1[df2, on = .(CASENUM = CASENUM), roll = FALSE]
 df <- inner_join(df1, df2, by = "CASENUM", suffix=c(".1",".2")) # dplyyr： 1是驾驶员1；2是驾驶员2
 
+df <- subset(df, df$VNUMBER1.1 == 1 & df$VNUMBER2.2 == 2)
+
+table(df$VNUMBER1.1)
+table(df$VNUMBER2.2)
+
 fwrite(df, file = "/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/output_crss/dftwodriver20210401.csv")
+crss <- fread(file = "/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/output_crss/dftwodriver20210401.csv")
