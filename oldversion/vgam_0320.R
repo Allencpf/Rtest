@@ -4,7 +4,7 @@ install.packages("xtable")
 install.packages("flextable")
 install.packages("VGAMdata")
 install.packages("MCMCglmm")
-slkdfj
+##slkdfj
 ###########library############
 library(readr)
 library(dplyr)
@@ -570,7 +570,7 @@ fit.mvor3 <- mvord(formula = MMO2(INJ_SEV, INJ_SEV_) ~ 0 + AGE1+ DR_DRINK + DRUG
 fit.mvor1 <- mvord(formula = MMO2(INJ_SEV, INJ_SEV_) ~ 0 + AGE1+ DR_DRINK + DRUGS+ REST_USE +AIR_BAG + EJECTION + ROLLOVER + AGE1_ + DR_DRINK_+  DRUGS_ + REST_USE_ + AIR_BAG_+ EJECTION_ + ROLLOVER_ + MAN_COLL + TIME + WEATHER, 
                   data = Mdata1, threshold.constraints = c(1,2), link=mvlogit())
 
-fit.mvf <- mvord(formula = MMO2(INJ_SEV,INJ_SEV_,REST_USE, REST_USE_) ~ 0 + AGE1+ DR_DRINK + DRUGS +AIR_BAG + EJECTION + ROLLOVER + AGE1_ + DR_DRINK_+  DRUGS_  + AIR_BAG_+ EJECTION_ + ROLLOVER_ + MAN_COLL + TIME + WEATHER, 
+fit.mvf <- mvord(formula = MMO2(REST_USE, REST_USE_, INJ_SEV,INJ_SEV_) ~ 0 + AGE1+ DR_DRINK + DRUGS +AIR_BAG + EJECTION + ROLLOVER + AGE1_ + DR_DRINK_+  DRUGS_  + AIR_BAG_+ EJECTION_ + ROLLOVER_ + MAN_COLL + TIME + WEATHER, 
                    threshold.constraints = c(1,2,3,4),
                    link = mvlogit(),data = Mdata1)
 
@@ -605,7 +605,7 @@ fitm1<-MCMCglmm(INJ_SEV ~ REST_USE + REST_USE_,
                 family = "threshold",
                 data = Mdata1, singular.ok = TRUE)
 
-
+###
 
 
 #########统计结果输出#######

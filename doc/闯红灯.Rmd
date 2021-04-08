@@ -1,0 +1,83 @@
+---
+title: "闯红灯"
+author: "Trevor"
+date: "4/8/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, cache = FALSE)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=TRUE}
+library(tidyverse)
+dfhd <- read_csv("/Users/cpf/Documents/paper/cross_behavior/data/df.csv")
+head(dfhd, 5)
+
+```
+
+```{r}
+dfhd %>% count(STATUA1)
+```
+
+
+
+```{r}
+library(MASS)
+dfhd1 <- dfhd %>% 
+  dplyr::mutate(
+    across(c(AGE, from, TYPE, ca3r, SITE, ca3rr, STATUA1, W3P1, SITE), as.factor),
+    across(c(STATUA1, W3P1), ~ fct_inseq(., ordered = TRUE))
+  )
+
+fit1 <- polr(STATUA1 ~ GEN + AGE + from + TYPE + ca3rr + TIME + awaitnon + awaitped + SITE,
+             data = dfhd1, 
+             method = c("logistic"))
+summary(fit1)
+```
+输出结果得到有序分类Logistic回归模型中截距和回归系数的最大似然估计值，确定回归方程为：
+```{r}
+library(equatiomatic)
+extract_eq(fit1, use_coefs = TRUE)
+```
+### 系数的解释
+
+```{r}
+coef(fit1) %>%  exp()
+```
+* GEN:在其它因素不变的情况下，男性要比女性会增加闯红灯的程度向上提高一个级别的概率1.40倍，也就是增加了40%
+* ca3rr2:在其它因素不变的情况下，车流量由比对组增加到ca3rr2，会增加闯红灯的程度向上提高一个级别的概率0.75倍，也就是减少了25%。
+### 边际效应
+```{r}
+library(margins)
+me_age <- marginal_effects(fit1, variables = c("GEN", "AGE", "from", "TYPE","ca3rr","TIME","awaitnon", "awaitped"))
+
+me_age %>%  # 求每一个解释变量的平均边际效应
+  summarise(across(everything(), mean, na.rm = TRUE))
+
+```
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
