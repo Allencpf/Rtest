@@ -1,0 +1,68 @@
+---
+title: "混合模型Mixed models"
+author: "Trevor"
+date: "4/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+# 混合模型Mixed Models
+
+混合模型是非常有用的建模工具，适用于以下情况：数据中的观察值之间存在一定的依赖性，其中相关性通常是由于观察值以某种方式聚类而产生的。例如，很常见的数据是我们对观察单位进行了重复测量，或者以其他方式将观察单位分组在一起（例如，学校内的学生，地理区域内的城市）。尽管有多种方法可以解决这种情况，但是混合模型是一种非常常见且功能强大的工具。此外，它们与其他统计方法有联系，从而进一步扩展了其适用性。 
+
+## 1.专业术语 
+对于初学者而言，围绕混合模型（尤其是跨学科）的术语可能会有些混乱。关于这些类型的模型，您可能会遇到一些术语包括但不限于如下： 
+
+* Variance components 方差成分
+* Random intercepts and slopes  随机截距和斜率
+* Random effects 随机效应
+* Random coefficients 随机系数
+* Varying coefficients 系数变化
+* Intercepts- and/or slopes-as-outcomes 
+* Hierarchical linear models 分层线性模型
+* Multilevel models (implies multiple levels of hierarchically clustered data) 多层模型
+* Growth curve models (possibly Latent GCM)  
+* Mixed effects models 混合效应模型
+
+所有描述混合模型的类型。有些术语可能更具历史性，另一些术语在特定学科中更常见，另一些术语可能指的是某种数据结构，还有一些则是特殊情况。混合效应（Mixed effects）或简单混合模型通常是指固定效应和随机效应的混合。对于一般的模型，我更喜欢术语"混合模型"或"随机效应模型"，因为它们是更简单的术语，没有暗示特定的结构，并且后者也可以应用于许多人在其他术语被使用时不会想到的扩展。对于混合效应，固定效应可能是一个较差的术语，但对于线性回归模型（即混合模型的非随机部分）中所见的典型主要效应而言，却是固执的术语。在某些情况下，它们被称为"固定效应"。人口平均效应。尽管您会听到许多定义，但是随机效应只是观察单元所特有的，无论如何定义。本文档中概述的方法在很大程度上与观察单位为某种分组因子的水平有关，但这只是一种可能性。
+
+## 2.聚类（Clustering）的种类
+数据可能具有一个或多个群集源，并且该群集可能是分层的，因此群集嵌套在其他群集中。例如多次给予学生的学业能力测验（嵌套在学生中的重复观察，嵌套在学校中的学生，嵌套在地区中的学校）。在其他情况下，没有嵌套结构（nesting structure）。一个例子是参与者执行相同的任务的反应时间的实验。观察值嵌套在个人中时，观察值也会根据任务类型进行聚类。有些使用嵌套（nested）和交叉（crossed）的术语来区分这些方案。另外，群集可能平衡或不平衡。我们可能期望在实验性质的研究中有更多的平衡，但在其他情况下（例如，其中的群集类似于地理单位，而观测值则是人。
+
+在接下来的内容中，我们将看到在所有这些数据情况下的混合效果模型。通常，我们的方法将是相同的，因为这种聚类实际上实际上是数据的属性而不是模型的属性。但是，重要的是要了解混合模型的灵活性，以处理各种数据情况。
+
+## 3.随机截距模型（Random Intercept Model）
+下面，我们将说明混合模型的最简单和最常见的情况，在这种情况下，我们将使用单个分组/集群结构来获得随机效果。由于希望很快就能弄清楚的原因，通常将其称为随机截距模型。
+
+### Example：大学生平均绩点评估
+接下来，我们将评估预测大学平均绩点（GPA）的因素。对200名学生中的每人进行了6次评估（前三年的每个学期），因此我们将观察结果集中在学生中。我们还有其他变量，例如工作状态，性别和高中GPA。有些会以标签和数字形式出现。有关更多详细信息，请参见附录。
+
+
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
