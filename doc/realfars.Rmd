@@ -3,10 +3,19 @@ title: "realfars"
 author: "Trevor"
 date: "4/8/2021"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+
+```
+
+
 
 

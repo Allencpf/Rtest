@@ -39,4 +39,61 @@ results
 
 ```
 
+```{r}
+head(crss1)
+crss_l= crss %>%
+  pivot_longer(-c(CASENUM, LGT, MANCOLL, WEATHHER, HOUR.1, WEATHER2, TYP_INT.1),
+               names_to = c(".value", "VENO"),
+               names_sep = "\\.",
+               values_drop_na = TRUE)
+head(crss_l)
+
+group1 = crss_l %>% 
+  filter(DRUGS < 7) %>% 
+  select(-c(CASENUM,VEH_NO)) %>% 
+  group_by(LGT,WEATHER2,VENO) %>% 
+  summarise(across(everything(), list(mean=mean,sd=sd), na.rm=TRUE)) %>% 
+  
+
+t(as.matrix(group1))
+
+crss_l %>% 
+  count(LGT, WEATHER2, VENO, sort=TRUE)
+
+
+group2= crss_l %>% 
+  mutate(LGTW = case_when(LGT == 0 & WEATHER2 == 0 & VENO ==1 ~ "白天好天1",
+                          LGT == 0 & WEATHER2 == 0 & VENO ==2 ~ "白天好天2",
+                          LGT == 0 & WEATHER2 == 1 & VENO ==1 ~ "白天坏天1",
+                          LGT == 0 & WEATHER2 == 1 & VENO ==2 ~ "白天坏天2",
+                          LGT == 1 & WEATHER2 == 0 & VENO ==1 ~ "夜有灯好天1",
+                          LGT == 1 & WEATHER2 == 0 & VENO ==2 ~ "夜有灯好天2",
+                          LGT == 1 & WEATHER2 == 1 & VENO ==1 ~ "夜有灯坏天1",
+                          LGT == 1 & WEATHER2 == 1 & VENO ==2 ~ "夜有灯坏天2",
+                          LGT == 2 & WEATHER2 == 0 & VENO ==1 ~ "夜无灯好天1",
+                          LGT == 2 & WEATHER2 == 0 & VENO ==2 ~ "夜无灯好天2",
+                          LGT == 2 & WEATHER2 == 1 & VENO ==1 ~ "夜无灯坏天1",
+                          LGT == 2 & WEATHER2 == 1 & VENO ==2 ~ "夜无灯坏天2")) %>% 
+  count(LGTW,INJ_SEV)
+## 添加字体
+library(showtext)
+font_add("kt", "/Users/cpf/Library/Fonts/楷体_GB2312.ttf")
+showtext_auto()
+# stacked + percent
+group2 %>% 
+  drop_na() %>% 
+  ggplot(aes(fill=INJ_SEV, y= n, x = LGTW)) + 
+  geom_bar(position="fill", stat = "identity") +
+  scale_y_continuous(labels = scales::percent) + #纵坐标变为百分比
+  labs(y = "受伤严重程度个数") +
+  theme_gray()
+
+
+```
+
+
+
+
+
+
 
