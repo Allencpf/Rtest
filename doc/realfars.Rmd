@@ -13,6 +13,39 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
+fars_a19 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2019NationalCSV/accident.CSV")
+fars_p19 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2019NationalCSV/person.CSV")
+fars_v19 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2019NationalCSV/vehicle.CSV")
+fars_a18 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2018NationalCSV/accident.CSV")
+fars_p18 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2018NationalCSV/person.CSV")
+fars_v18 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2018NationalCSV/vehicle.CSV")
+fars_a17 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2017NationalCSV/accident.CSV")
+fars_p17 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2017NationalCSV/person.CSV")
+fars_v17 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2017NationalCSV/vehicle.CSV")
+fars_a16 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2016NationalCSV/accident.CSV")
+fars_p16 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2016NationalCSV/person.CSV")
+fars_v16 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/National/FARS2016NationalCSV/vehicle.CSV")
+```
+
+```{r}
+ars_a19 %>%
+  count(ST_CASE) %>% 
+  filter(n>1)
+```
+
+```{r}
+listpva <- list(fars_p16=fars_p16,fars_v16=fars_v16,fars_a16=fars_a16,
+                fars_p17=fars_p17,fars_v17=fars_v17,fars_a17=fars_a17,
+                fars_p18=fars_p18,fars_v18=fars_v18,fars_a18=fars_a18,
+                fars_p19=fars_p19,fars_v19=fars_v19,fars_a19=fars_a19)
+results = vector("list", length(listpva))
+names(results) = names(listpva)
+for (i in seq_along(listpva)){
+  results[[i]] = listpva[i][[1]] %>% 
+    select(where(is.numeric))
+}
+
+
 
 ```
 
