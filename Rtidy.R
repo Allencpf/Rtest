@@ -27,7 +27,7 @@ df1 = df %>%
          NUM_INJ.2, VEH_ALCH.2, DR_PRES.2, DR_ZIP.2, SPEEDREL.2, VSPD_LIM.2,VTRAFCON.2,VTRAFWAY.2, 
          VNUM_LAN.2, VALIGN.2, VSURCOND.2, VPROFILE.2,ACC_TYPE.2, # VEhecile 2
          AGE.2, SEX.2, PER_TYP.2, INJ_SEV.2, SEAT_POS.2, REST_USE.2, AIR_BAG.2, EJECTION.2,
-         DRINKING.2, DRUGS.2, HOSPITAL.2, STR_VEH.2,LOCATION.2, # Person 2
+         DRINKING.2, DRUGS.2, HOSPITAL.2, STR_VEH.2,LOCATION.2 # Person 2
          )
 df2 = df1 %>%
   select(-YEAR.1) %>% 
@@ -95,13 +95,25 @@ df2 %>%
 
 #########3.宽表变长表############
 knitr::kable(df2[1:5,], align = "c")
+df_long = df2 %>% 
+  pivot_longer(-c(CASENUM, VE_TOTAL.1, VE_FORMS.1, PVH_INVL.1, PERMVIT.1, 
+                  MONTH.1, DAY_WEEK.1, HOUR.1, MINUTE.1,HARM_EV.1,
+                  MAN_COLL.1, RELJCT1.1, TYP_INT.1, REL_ROAD.1, WRK_ZONE.1,
+                  LGT_COND.1, WEATHER.1, SCH_BUS.1, MAX_SEV.1, NUM_INJ.1,
+                  WEATHHER, WEATHER2, LGT, MANCOLL),
+               names_to = c(".value", "VENO"),
+               names_sep = "\\.",
+               values_drop_na = TRUE) %>% 
+  write_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/output_crss/dftwoall_long0416.csv")
+  
+
 
 df4= df3 %>%
   pivot_longer(-c(CASENUM, LGT, MANCOLL, WEATHHER, HOUR.1, WEATHER2),
                names_to = c(".value", "VENO"),
                names_sep = "\\.",
                values_drop_na = TRUE)
-
+df4 %>% write_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/output_crss/dftwo_long0413.csv")
 dfdemo = df3 %>% 
   slice_sample(n=50) %>%  #随机选取50行
   select(CASENUM, AGE1.1, AGE1.2, REST_USE.1, REST_USE.2, INJ_SEV.1, INJ_SEV.2, WEATHHER) %>% 
@@ -136,7 +148,7 @@ df4 %>%
 ##########4. mvord model###############
 df3 = df2 %>% 
   filter(between(TYP_INT.1, 2, 7)) %>% 
-  select(CASENUM,VEH_NO.1,VEH_NO.2,REST_USE.1,REST_USE.2,INJ_SEV.1,INJ_SEV.2,HOUR.1,  AGE1.1,AGE.1, DRINKING.1, DRUGS.1, AIR_BAG.1, EJECTION.1,ROLLOVER.1,
+  select(CASENUM,VEH_NO.1,VEH_NO.2,REST_USE.1,REST_USE.2,SEX.1, SEX.2, INJ_SEV.1,INJ_SEV.2,HOUR.1,  AGE1.1,AGE.1, DRINKING.1, DRUGS.1, AIR_BAG.1, EJECTION.1,ROLLOVER.1,
          AGE1.2,AGE.2 ,DRINKING.2, DRUGS.2, AIR_BAG.2, EJECTION.2, ROLLOVER.2, MANCOLL, LGT, WEATHHER, WEATHER2, TYP_INT.1) %>% 
   drop_na() %>% 
   write_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/output_crss/dftwo0408.csv")

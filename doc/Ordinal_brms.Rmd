@@ -1,0 +1,192 @@
+---
+title: "fars"
+author: "Trevor"
+date: "4/8/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+```{r}
+library(tidyverse)
+library(brms)
+library(sjmisc) # rec函数，分类
+# set ggplot theme
+theme_set(theme_default())
+
+# set rstan options
+rstan::rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+# create a "models" folder in the current working directory
+# to store fitted model objects for easier re-usage
+if (!dir.exists("models")) {
+	dir.create("models")
+}
+
+
+```
+
+## data preparation
+```{r}
+factorcols <- c("REST_USE", "SEX", "VEH_NO","BODY_TYP", "DRINKING", "DRUGS", "AGE1", "AIR_BAG")
+df_crss <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/output_crss/dftwoall_long0416.csv") %>% 
+  rec(INJ_SEV, rec = "0 = 1; 1= 2; 2,3=3", append = TRUE, suffix = "H") %>% 
+  mutate(REST_USE = factor(REST_USE, levels =c(1,0),labels =  c("系安全带","不系安全带"))) %>% 
+  mutate(MANCOLL = factor(MANCOLL, levels = c(0,1,2,3), labels = c("front to rear", "front to front", "angle", "sidewipe"))) %>% 
+  filter(DRINKING < 2 , DRUGS < 2 ,TYP_INT.1 == 2, TRAV_SP < 130) %>% 
+  mutate_each_(funs(factor(.)), factorcols)
+  
+df_crss %>% 
+  glimpse()
+  
+  
+
+prior_ma <- prior(normal(0, 5), class = "b") +
+  prior(normal(0, 5), class = "Intercept")
+
+fit_ma1 <- brm(
+  INJ_SEVH ~ 1 + AGE + REST_USE + MANCOLL,
+  data = df_crss, 
+  family = cumulative("probit"),
+  prior = prior_ma, 
+  inits = 0
+)
+
+
+fit_ma2 <- brm(
+  formula = INJ_SEVH ~ 1 + AGE + cs(REST_USE) + MANCOLL,
+  data = df_crss, 
+  family = acat("probit"),
+  # prior = prior_ma, 
+  inits = 0
+)
+
+fit_ma3 <- brm(
+  formula = INJ_SEV ~ 1 + AGE + REST_USE + MANCOLL, 
+  data = df_crss, 
+  family = acat("probit")
+)
+
+fit_ma4 <- brm(
+  formula = bf(INJ_SEVH ~ 1 + AGE + REST_USE + MANCOLL) +
+    lf(disc ~ 0 + REST_USE, cmc = FALSE),
+  data = df_crss, 
+  family = cumulative("probit")
+)
+
+
+marginal_effects(fit_ma1)
+conditional_effects(fit_ma4, "AGE", categorical = TRUE)
+conditional_effects(fit_ma4, "REST_USE", categorical = TRUE)
+conditional_effects(fit_ma4, "MANCOLL", categorical = FALSE)
+
+conditional_smooths(fit_ma4)
+
+fit_zinb1 <- brm(INJ_SEV ~ AGE + REST_USE + MANCOLL,
+                 data = df_crss,
+                 family = zero_inflated_poisson("log"))
+
+marginal_effects(fit_zinb1)
+conditional_effects(fit_zinb1, "AGE")
+conditional_effects(fit_zinb1, "MANCOLL")
+
+LOO(fit_ma1, fit_ma2,fit_ma4,fit_zinb1)
+
+
+```
+
+
+```{r}
+
+# formula
+formula_va_ord_1pl <- bf(INJ_SEVH ~ 1 + (1 | CASENUM) + (1 | BODY_TYP))
+# specify some weakly informative priors
+prior_va_1pl <- 
+  prior("normal(0,3)", class = "sd", group = "CASENUM") + 
+  prior("normal(0,3)", class = "sd", group = "BODY_TYP")
+# fit the model 
+fit_va_ord_1pl <- brm(
+  formula = formula_va_ord_1pl,
+  data = df_crss,
+  family = brmsfamily("cumulative","logit"),
+  prior = prior_va_1pl,
+  seed = 1234,
+  file = "models/fit_va_ord_1pl"
+)
+# extract BODY_TYP and CASENUM parameters
+(ranef_va_ord_1pl <- ranef(fit_va_ord_1pl))
+# plot CASENUM parameters
+ranef_va_ord_1pl$CASENUM[, , "Intercept"] %>%
+	as_tibble() %>%
+	rownames_to_column() %>%
+	arrange(Estimate) %>%
+	mutate(id = seq_len(n())) %>%
+	ggplot(aes(id, Estimate, ymin = Q2.5, ymax = Q97.5)) +
+	geom_pointrange(alpha = 0.7) +
+	coord_flip() +
+	labs(x = " CASENUM (Sorted)")
+
+# extract BODY_TYP parameters
+(item_pars_va_ord_1pl <- coef(fit_va_ord_1pl)$BODY_TYP)
+
+# plot BODY_TYP parameters
+item_pars_va_ord_1pl[, , "Intercept[1]"]%>%
+	as_tibble() %>%
+	rownames_to_column() %>%
+	rename(BODY_TYP = "rowname") %>%
+	mutate(BODY_TYP = as.numeric(BODY_TYP)) %>%
+	ggplot(aes(BODY_TYP, Estimate, ymin = Q2.5, ymax = Q97.5)) +
+	geom_pointrange() +
+	coord_flip() +
+	labs(x = "BODY_TYP Number")
+
+
+# fit a more complex covariate model
+formula_va_1pl_cov2 <- bf(
+	INJ_SEVH ~ AGE +TRAV_SP + SEX + REST_USE + MANCOLL + DRINKING + DRUGS + AIR_BAG + REST_USE:SEX + TRAV_SP:SEX +
+	(0 + SEX | BODY_TYP) + (0 + REST_USE | CASENUM)
+)
+fit_va_1pl_cov2 <- brm(
+  formula = formula_va_1pl_cov2,
+  data = df_crss, 
+  family = brmsfamily("acat", "logit"),
+  prior = prior_va_1pl,
+  seed = 1234,
+  file = "models/fit_va_1pl_cov2"
+)
+
+
+# 把REST_USE 等变为factor
+formula_va_1pl_cov3 <- bf(
+	INJ_SEVH ~ AGE + cs(TRAV_SP) + SEX + REST_USE + MANCOLL + DRINKING + DRUGS + AIR_BAG + REST_USE:SEX + TRAV_SP:REST_USE + TRAV_SP:SEX + 
+	(0 + SEX | BODY_TYP) + (0 + REST_USE | CASENUM)
+)
+fit_va_1pl_cov3 <- brm(
+  formula = formula_va_1pl_cov3,
+  data = df_crss, 
+  family = brmsfamily("acat", "logit"),
+  prior = prior_va_1pl,
+  seed = 1234,
+  file = "models/fit_va_1pl_cov3"
+)
+
+conditional_effects(fit_va_1pl_cov2, effects = c("AGE","TRAV_SP","SEX", "REST_USE", "MANCOLL",
+                                                 "DRINKING", "DRUGS", "AIR_BAG"),
+                    categorical = TRUE,ask = FALSE)
+
+plot(conditional_effects(fit_va_1pl_cov2, effects = c("REST_USE:SEX","TRAV_SP:SEX")),
+                    ask = FALSE)
+
+```
+
+
+

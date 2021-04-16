@@ -18,28 +18,68 @@ knitr::opts_chunk$set(
 
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
-crss <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/output_crss/dftwo0408.csv")
+crss <- read_csv("/home/data/original/dftwo0408.csv")
 
 crss1 <- crss %>% 
+  dplyr::mutate(
+    across(c(AGE1.1,AGE1.2, MANCOLL, INJ_SEV.1, INJ_SEV.2, DRINKING.1, DRINKING.2, DRUGS.1, DRUGS.2, 
+             AIR_BAG.1, AIR_BAG.2, EJECTION.1, EJECTION.2, ROLLOVER.1, ROLLOVER.2), as.factor),
+    across(c(INJ_SEV.1, INJ_SEV.2), ~ fct_inseq(., ordered = TRUE))
+  ) %>% 
   group_split(LGT, WEATHER2)
+crss1
 ```
-
 
 ```{r warning=FALSE}
 library(mvord)
-results = vector("list", length(crss1))
-names(results) = names(crss1)
+pb <- txtProgressBar(style=3)
+star_time <- Sys.time() ## 记录程序开始时间
 
-for (i in seq_along(crss1)){
-  results[i] = mvord(formula = MMO2(REST_USE.1, REST_USE.2, INJ_SEV.1,INJ_SEV.2) ~ 0 + AGE1.1+ DRINKING.1 + DRUGS.1 +AIR_BAG.1 + EJECTION.1 + ROLLOVER.1 + AGE1.2 + DRINKING.2+  DRUGS.2  + AIR_BAG.2+ EJECTION.2 + ROLLOVER.2 + MANCOLL,
-                 threshold.constraints = c(1,2,3,4),
-                 link = mvprobit(),data = crss1[i][[1]])
-}
-results
+# results = vector("list", length(crss1))
+# names(results) = names(crss1)
+# 
+# for (i in seq_along(crss1)){
+#   
+#   results[[i]] <- mvord(formula = MMO2(REST_USE.1, REST_USE.2, INJ_SEV.1,INJ_SEV.2) ~ 0 + AGE1.1+ DRINKING.1 + DRUGS.1 +AIR_BAG.1 + EJECTION.1 + ROLLOVER.1 + AGE1.2 + DRINKING.2+  DRUGS.2  + AIR_BAG.2+ EJECTION.2 + ROLLOVER.2 + MANCOLL,
+#                  threshold.constraints = c(1,2,3,4),
+#                  link = mvprobit(),data = crss1[i][[1]])
+#    ## 第二个位置：实时反映进度
+#   setTxtProgressBar(pb, i/seq_along(crss1))
+# }
+# 
+# end_time <- Sys.time()  ## 记录程序结束时间
+# ## 第三个位置关闭进度条
+# close(pb)
+# run_time <- end_time - star_time  ## 计算程序运行时间
+# results
+
+mv1 <- mvord(formula = MMO2(REST_USE.1, REST_USE.2, INJ_SEV.1,INJ_SEV.2) ~ 0 + AGE1.1+ DRINKING.1 + DRUGS.1 +AIR_BAG.1 + EJECTION.1 + ROLLOVER.1 + AGE1.2 + DRINKING.2+  DRUGS.2  + AIR_BAG.2+ EJECTION.2 + ROLLOVER.2 + MANCOLL,
+                  threshold.constraints = c(1,2,3,4),
+                  link = mvlogit(),data = crss1[1][[1]])
+mv2 <- mvord(formula = MMO2(REST_USE.1, REST_USE.2, INJ_SEV.1,INJ_SEV.2) ~ 0 + AGE1.1+ DRINKING.1 + DRUGS.1 +AIR_BAG.1 + EJECTION.1 + ROLLOVER.1 + AGE1.2 + DRINKING.2+  DRUGS.2  + AIR_BAG.2+ EJECTION.2 + ROLLOVER.2 + MANCOLL,
+                  threshold.constraints = c(1,2,3,4),
+                  link = mvlogit(),data = crss1[2][[1]])
+mv3 <- mvord(formula = MMO2(REST_USE.1, REST_USE.2, INJ_SEV.1,INJ_SEV.2) ~ 0 + AGE1.1+ DRINKING.1 + DRUGS.1 +AIR_BAG.1 + EJECTION.1 + ROLLOVER.1 + AGE1.2 + DRINKING.2+  DRUGS.2  + AIR_BAG.2+ EJECTION.2 + ROLLOVER.2 + MANCOLL,
+                  threshold.constraints = c(1,2,3,4),
+                  link = mvlogit(),data = crss1[3][[1]])
+mv4 <- mvord(formula = MMO2(REST_USE.1, REST_USE.2, INJ_SEV.1,INJ_SEV.2) ~ 0 + AGE1.1+ DRINKING.1 + DRUGS.1 +AIR_BAG.1 + EJECTION.1 + ROLLOVER.1 + AGE1.2 + DRINKING.2+  DRUGS.2  + AIR_BAG.2+ EJECTION.2 + ROLLOVER.2 + MANCOLL,
+                  threshold.constraints = c(1,2,3,4),
+                  link = mvlogit(),data = crss1[4][[1]])
+mv5 <- mvord(formula = MMO2(REST_USE.1, REST_USE.2, INJ_SEV.1,INJ_SEV.2) ~ 0 + AGE1.1+ DRINKING.1 + DRUGS.1 +AIR_BAG.1 +  ROLLOVER.1 + AGE1.2 + DRINKING.2+  DRUGS.2  + AIR_BAG.2+  ROLLOVER.2 + MANCOLL,
+                  threshold.constraints = c(1,2,3,4),
+                  link = mvlogit(),data = as.data.frame(crss1[5][[1]]))
+mv6 <- mvord(formula = MMO2(REST_USE.1, REST_USE.2, INJ_SEV.1,INJ_SEV.2) ~ 0 + AGE1.1+ DRINKING.1 + DRUGS.1 +AIR_BAG.1 + EJECTION.1 + ROLLOVER.1 + AGE1.2 + DRINKING.2+  DRUGS.2  + AIR_BAG.2+ EJECTION.2 + ROLLOVER.2 + MANCOLL,
+                  threshold.constraints = c(1,2,3,4),
+                  link = mvlogit(),data = crss1[6][[1]])
+mvall <- mvord(formula = MMO2(REST_USE.1, REST_USE.2, INJ_SEV.1,INJ_SEV.2) ~ 0 + AGE1.1+ DRINKING.1 + DRUGS.1 +AIR_BAG.1 + EJECTION.1 + ROLLOVER.1 + AGE1.2 + DRINKING.2+  DRUGS.2  + AIR_BAG.2+ EJECTION.2 + ROLLOVER.2 + MANCOLL,
+                  threshold.constraints = c(1,2,3,4),
+                  link = mvlogit(),data = crss)
+
 
 ```
 
 ```{r}
+
 head(crss1)
 crss_l= crss %>%
   pivot_longer(-c(CASENUM, LGT, MANCOLL, WEATHHER, HOUR.1, WEATHER2, TYP_INT.1),
@@ -62,18 +102,18 @@ crss_l %>%
 
 
 group2= crss_l %>% 
-  mutate(LGTW = case_when(LGT == 0 & WEATHER2 == 0 & VENO ==1 ~ "白天好天1",
-                          LGT == 0 & WEATHER2 == 0 & VENO ==2 ~ "白天好天2",
-                          LGT == 0 & WEATHER2 == 1 & VENO ==1 ~ "白天坏天1",
-                          LGT == 0 & WEATHER2 == 1 & VENO ==2 ~ "白天坏天2",
-                          LGT == 1 & WEATHER2 == 0 & VENO ==1 ~ "夜有灯好天1",
-                          LGT == 1 & WEATHER2 == 0 & VENO ==2 ~ "夜有灯好天2",
-                          LGT == 1 & WEATHER2 == 1 & VENO ==1 ~ "夜有灯坏天1",
-                          LGT == 1 & WEATHER2 == 1 & VENO ==2 ~ "夜有灯坏天2",
-                          LGT == 2 & WEATHER2 == 0 & VENO ==1 ~ "夜无灯好天1",
-                          LGT == 2 & WEATHER2 == 0 & VENO ==2 ~ "夜无灯好天2",
-                          LGT == 2 & WEATHER2 == 1 & VENO ==1 ~ "夜无灯坏天1",
-                          LGT == 2 & WEATHER2 == 1 & VENO ==2 ~ "夜无灯坏天2")) %>% 
+  mutate(LGTW = case_when(LGT == 0 & WEATHER2 == 0 & VENO ==1 ~ "A白天好天1",
+                          LGT == 0 & WEATHER2 == 0 & VENO ==2 ~ "B白天好天2",
+                          LGT == 0 & WEATHER2 == 1 & VENO ==1 ~ "C白天坏天1",
+                          LGT == 0 & WEATHER2 == 1 & VENO ==2 ~ "D白天坏天2",
+                          LGT == 1 & WEATHER2 == 0 & VENO ==1 ~ "E夜有灯好天1",
+                          LGT == 1 & WEATHER2 == 0 & VENO ==2 ~ "F夜有灯好天2",
+                          LGT == 1 & WEATHER2 == 1 & VENO ==1 ~ "G夜有灯坏天1",
+                          LGT == 1 & WEATHER2 == 1 & VENO ==2 ~ "H夜有灯坏天2",
+                          LGT == 2 & WEATHER2 == 0 & VENO ==1 ~ "I夜无灯好天1",
+                          LGT == 2 & WEATHER2 == 0 & VENO ==2 ~ "J夜无灯好天2",
+                          LGT == 2 & WEATHER2 == 1 & VENO ==1 ~ "K夜无灯坏天1",
+                          LGT == 2 & WEATHER2 == 1 & VENO ==2 ~ "L夜无灯坏天2")) %>% 
   count(LGTW,INJ_SEV)
 ## 添加字体
 library(showtext)
@@ -85,7 +125,7 @@ group2 %>%
   ggplot(aes(fill=INJ_SEV, y= n, x = LGTW)) + 
   geom_bar(position="fill", stat = "identity") +
   scale_y_continuous(labels = scales::percent) + #纵坐标变为百分比
-  labs(y = "受伤严重程度个数") +
+  labs(y = "受伤严重程度") +
   theme_gray()
 
 
