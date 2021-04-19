@@ -7,13 +7,8 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r global_options, include=TRUE}
-knitr::opts_chunk$set(
-  fig.path='Figs/',
-	echo = FALSE,
-	message = FALSE,
-	warning = FALSE
-)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r message=FALSE, warning=FALSE}
@@ -33,12 +28,12 @@ fars_v16 <- read_csv("/Users/cpf/OneDrive - bjtu.edu.cn/Data/Original/NHTSA/Nati
 ```
 
 ```{r}
-fars_a19 %>%
+ars_a19 %>%
   count(ST_CASE) %>% 
   filter(n>1)
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r}
 listpva <- list(fars_p16=fars_p16,fars_v16=fars_v16,fars_a16=fars_a16,
                 fars_p17=fars_p17,fars_v17=fars_v17,fars_a17=fars_a17,
                 fars_p18=fars_p18,fars_v18=fars_v18,fars_a18=fars_a18,
@@ -46,255 +41,13 @@ listpva <- list(fars_p16=fars_p16,fars_v16=fars_v16,fars_a16=fars_a16,
 results = vector("list", length(listpva))
 names(results) = names(listpva)
 for (i in seq_along(listpva)){
-  listpva[i][[1]] = listpva[i][[1]] %>% 
+  results[[i]] = listpva[i][[1]] %>% 
     select(where(is.numeric))
 }
 
 
-```
-
-
-
-```{r}
-
-for (i in 1:3){
-  listpva[i][[1]] = listpva[i][[1]] %>% 
-  mutate(YR = 2016) %>% 
-  unite(YRST_CASE,c(YR,ST_CASE),sep = "")   
-}
-for (i in 4:6){
-  listpva[i][[1]] = listpva[i][[1]] %>% 
-  mutate(YR = 2017) %>% 
-  unite(YRST_CASE,c(YR,ST_CASE),sep = "")   
-}
-for (i in 7:9){
-  listpva[i][[1]] = listpva[i][[1]] %>% 
-  mutate(YR = 2018) %>% 
-  unite(YRST_CASE,c(YR,ST_CASE),sep = "")   
-}
-for (i in 10:12){
- listpva[i][[1]] = listpva[i][[1]] %>% 
-  mutate(YR = 2019) %>% 
-  unite(YRST_CASE,c(YR,ST_CASE),sep = "")     
-}
-#将16-19年的pva数据按行合并
-df_p <- bind_rows(listpva[1][[1]],listpva[4][[1]],listpva[7][[1]],listpva[10][[1]])
-df_v <- bind_rows(listpva[2][[1]],listpva[5][[1]],listpva[8][[1]],listpva[11][[1]])
-df_a <- bind_rows(listpva[3][[1]],listpva[6][[1]],listpva[9][[1]],listpva[12][[1]])
-#将pva按列合并
-tj <- colnames(df_p) %in% colnames(df_v)
-df_pv = df_p %>% 
-  left_join(df_v, by = colnames(df_p)[tj])
-tj2 <- colnames(df_pv) %in% colnames(df_a)
-df_pva = df_pv %>% 
-  left_join(df_a, by =colnames(df_pv)[tj2])
-df_pva %>%
-  count(YRST_CASE) %>% 
-  filter(n==2)
-```
-```{r}
-write_csv(df_pva, "/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/Output_fars/Routput_20210411_/df_pvalong.csv")
-library(sjmisc)
-pva = df_pva %>% 
-  select(-c(DRUG_DET,DSTATUS,DRUGTST1,DRUGTST2,DRUGTST3,DRUGRES1,DRUGRES2,DRUGRES3,
-            DR_SF1,DR_SF2,DR_SF3,DR_SF4,CF1,CF2,CF3,WEATHER1,WEATHER2)) %>% 
-  ### Accident level
-  #天气四分类 0clean,1fog/cloud,2rain,3snow
-  filter(WEATHER<15) %>% rec(WEATHER, rec = "1= 0; 2= 2; 3,4= 3; else= 1", append = TRUE,suffix = "4") %>%              
-  #天气 二分类0好天，1坏天气
-  rec(WEATHER, rec = "1=0;else=1",append = TRUE, suffix = "2") %>%  
-  # 是否工作日程，0工作日，1周末
-  rec(DAY_WEEK, rec = "1:5=0;else=1", append = TRUE, suffix = "") %>% 
-  #光照条件 0白天，1夜间有灯，2夜间无灯
-  filter(LGT_COND < 4) %>%  rec(LGT_COND, rec = "1=0;2=1;3=2",append = TRUE, suffix = "") %>% 
-  #碰撞方式陈0fron to rear;1 front to front; 2 Angle; 3 Sidewipe
-  filter(between(MAN_COLL, 1,15)) %>%  rec(MAN_COLL,rec = "1=0;2=1;6=2;else=3", append = TRUE, suffix = "") %>% 
-  
-  ### Person level
-  #年龄四分类 0 0-24； 1 25-39； 3 40-59； 4 60以上
-  filter(AGE < 120) %>% mutate(AGE4 = cut(AGE, breaks = c(0,25,40,60,120), labels = c(0,1,2,3), include.lowest = TRUE)) %>% 
-  # 受伤严重程度
-  filter(INJ_SEV < 5) %>% 
-  filter(SEX < 3) %>% mutate(SEX = if_else(SEX == 1,0, 1)) %>% # 男0，女1
-  filter(REST_USE < 98) %>%  mutate(REST_USE = ifelse(REST_USE < 15, 1,0)) %>% 
-  filter(DRINKING < 3) %>% mutate(DRINKING = case_when(DRINKING == 0 ~ 0,DRINKING == 1 ~ 1)) %>% 
-  filter(between(AIR_BAG, 1, 27)) %>%  mutate(AIR_BAG = if_else(AIR_BAG == 20, 0, 1)) %>% 
-   ## Vehicle level 
-  filter(BODY_TYP < 80 & BODY_TYP<50 | BODY_TYP >59) %>% 
-  mutate(BODY_TYP = case_when(BODY_TYP <= 13 | BODY_TYP ==17 ~ 0 , # mobile
-                                between(BODY_TYP,14,19) & BODY_TYP != 17 ~ 1, #suv
-                                between(BODY_TYP,20,39) ~ 2,  # cargo
-                                TRUE ~ 3 # Truck
-                                )) %>% 
-  filter(ROLLOVER < 8) %>%  mutate(ROLLOVER = if_else(ROLLOVER == 0, 0, 1))
- 
 
 ```
-
-```{r}
-pva %>% 
-  count(LGT_COND, WEATHER2, VEH_NO, sort=TRUE)
-
-pva %>% 
-  filter(PER_TYP == 1 & VE_FORMS == 2 & VEH_NO <3) %>% 
-  count(LGT_COND, WEATHER2, VEH_NO, sort=FALSE)
-
-pva_l = pva %>% 
-  select(YRST_CASE,VEH_NO,PER_NO,HOUR,MAN_COLL,LGT_COND, 
-         BODY_TYP,MOD_YEAR, ROLLOVER, VE_FORMS, IMPACT1, AGE4, SEX,PER_TYP,INJ_SEV,REST_USE,AIR_BAG, EJECTION, DRINKING, DRUGS, TRAV_SP,VSPD_LIM,DR_DRINK,
-         DAY_WEEK,TYP_INT,WEATHER2,WEATHER4) %>% 
-  filter(PER_TYP == 1 & VE_FORMS == 2 & VEH_NO <3) %>% 
-  filter(YRST_CASE != "2016320363",
-         YRST_CASE != "2016420856",
-         YRST_CASE != "2017550419",
-         YRST_CASE != "2019420196",
-         YRST_CASE != "201963149",
-         YRST_CASE != "2016420363")
-write_csv(pva_l, "/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/Output_fars/Routput_20210411_/dfpvalong.csv")
-
-pva_w = pva %>% 
-  select(YRST_CASE,VEH_NO,PER_NO,HOUR,MAN_COLL,LGT_COND, 
-         BODY_TYP,MOD_YEAR, ROLLOVER, VE_FORMS, IMPACT1, AGE4, SEX,PER_TYP,INJ_SEV,REST_USE,AIR_BAG, EJECTION, DRINKING, DRUGS, TRAV_SP,VSPD_LIM,DR_DRINK,
-         DAY_WEEK,TYP_INT,WEATHER2,WEATHER4) %>% 
-  filter(PER_TYP == 1 & VE_FORMS == 2 & VEH_NO <3) %>% 
-  pivot_wider(names_from = VEH_NO,values_from =
-                c(BODY_TYP,MOD_YEAR, ROLLOVER, IMPACT1, AGE4, SEX,PER_TYP,INJ_SEV,REST_USE,AIR_BAG, EJECTION, DRINKING, DRUGS, TRAV_SP,VSPD_LIM,DR_DRINK,
-                  )) %>%
-  filter(YRST_CASE != "2016320363",
-         YRST_CASE != "2016420856",
-         YRST_CASE != "2017550419",
-         YRST_CASE != "2019420196",
-         YRST_CASE != "201963149",
-         YRST_CASE != "2016420363")
-write_csv(pva_w, "/Users/cpf/OneDrive - bjtu.edu.cn/Data/Modified/NHTSAdata/data/Output_fars/Routput_20210411_/df_pvawide.csv")
-
-pva_w %>%
-  count(YRST_CASE) %>% 
-  filter(n>1)
-
-```
-
-```{r}
-pva_l %>% 
-  count(LGT_COND, WEATHER2, VEH_NO, sort=FALSE)
-
-
-fgroup2= pva_l %>% 
-  mutate(LGTW = case_when(LGT_COND == 0 & WEATHER2 == 0 & VEH_NO ==1 ~ "A白天好天1",
-                          LGT_COND == 0 & WEATHER2 == 0 & VEH_NO ==2 ~ "B白天好天2",
-                          LGT_COND == 0 & WEATHER2 == 1 & VEH_NO ==1 ~ "C白天坏天1",
-                          LGT_COND == 0 & WEATHER2 == 1 & VEH_NO ==2 ~ "D白天坏天2",
-                          LGT_COND == 1 & WEATHER2 == 0 & VEH_NO ==1 ~ "E夜有灯好天1",
-                          LGT_COND == 1 & WEATHER2 == 0 & VEH_NO ==2 ~ "F夜有灯好天2",
-                          LGT_COND == 1 & WEATHER2 == 1 & VEH_NO ==1 ~ "G夜有灯坏天1",
-                          LGT_COND == 1 & WEATHER2 == 1 & VEH_NO ==2 ~ "H夜有灯坏天2",
-                          LGT_COND == 2 & WEATHER2 == 0 & VEH_NO ==1 ~ "I夜无灯好天1",
-                          LGT_COND == 2 & WEATHER2 == 0 & VEH_NO ==2 ~ "J夜无灯好天2",
-                          LGT_COND == 2 & WEATHER2 == 1 & VEH_NO ==1 ~ "K夜无灯坏天1",
-                          LGT_COND == 2 & WEATHER2 == 1 & VEH_NO ==2 ~ "L夜无灯坏天2")) %>% 
-  count(LGTW,INJ_SEV)
-## 添加字体
-library(showtext)
-font_add("kt", "/Users/cpf/Library/Fonts/楷体_GB2312.ttf")
-showtext_auto()
-# stacked + percent
-fgroup2 %>% 
-  drop_na() %>% 
-  ggplot(aes(fill=INJ_SEV, y= n, x = LGTW)) + 
-  geom_bar(position="fill", stat = "identity") +
-  scale_y_continuous(labels = scales::percent) + #纵坐标变为百分比
-  labs(y = "受伤严重程度个数") +
-  theme_gray()
-
-```
-
-```{r}
-pva_w1 <- pva_w %>% 
-  dplyr::mutate(
-    across(c(MAN_COLL,LGT_COND,DAY_WEEK,TYP_INT,WEATHER2,
-             BODY_TYP_1,BODY_TYP_2,ROLLOVER_1,ROLLOVER_2, AGE4_1,AGE4_2,SEX_1,SEX_2,INJ_SEV_1,INJ_SEV_2,
-             REST_USE_1,REST_USE_2,AIR_BAG_1,AIR_BAG_2,EJECTION_1,EJECTION_2,DRINKING_1,DRINKING_2,
-             DRUGS_1,DRUGS_2,DR_DRINK_1,DR_DRINK_2), as.factor),
-    across(c(INJ_SEV_1, INJ_SEV_2), ~ fct_inseq(., ordered = TRUE))) %>% 
-  drop_na() %>% 
-  group_split(LGT_COND, WEATHER2) 
-  
-```
-
-```{r}
-library(mvord)
-fmv1 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-               ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-                  threshold.constraints = c(1,2,3,4),
-                  link = mvprobit(),data = as.data.frame(pva_w1[1][[1]]))
-fmv11 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-               ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-                  threshold.constraints = c(1,1,2,2),
-                  coef.constraints = c(1,1,2,2),
-                  link = mvprobit(),data = as.data.frame(pva_w1[1][[1]]))
-fmv2 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-               ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-                  threshold.constraints = c(1,2,3,4),
-                  link = mvprobit(),data = as.data.frame(pva_w1[2][[1]]))
-fmv21 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-               ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-                  threshold.constraints = c(1,1,2,2),
-                  coef.constraints = c(1,1,2,2),
-                  link = mvprobit(),data = as.data.frame(pva_w1[2][[1]]))
-fmv3 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-               ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-                  threshold.constraints = c(1,2,3,4),
-                  link = mvprobit(),data = as.data.frame(pva_w1[3][[1]]))
-fmv31 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-               ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-                  threshold.constraints = c(1,1,2,2),
-                  coef.constraints = c(1,1,2,2),
-                  link = mvprobit(),data = as.data.frame(pva_w1[3][[1]]))
-# fmv4 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-#                ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-#                   threshold.constraints = c(1,2,3,4),
-#                   link = mvprobit(),data = as.data.frame(pva_w1[4][[1]]))
-fmv41 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-               ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-                  threshold.constraints = c(1,1,2,2),
-                  coef.constraints = c(1,1,2,2),
-                  link = mvprobit(),data = as.data.frame(pva_w1[4][[1]]))
-# fmv5 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-#                ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-#                   threshold.constraints = c(1,2,3,4),
-#                   link = mvprobit(),data = as.data.frame(pva_w1[5][[1]]))
-fmv51 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-               ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-                  threshold.constraints = c(1,1,2,2),
-                  coef.constraints = c(1,1,2,2),
-                  link = mvprobit(),data = as.data.frame(pva_w1[5][[1]]))
-
-# fmv6 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-#                ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-#                   threshold.constraints = c(1,2,3,4),
-#                   link = mvprobit(),data = as.data.frame(pva_w1[6][[1]]))
-
-fmv61 <- mvord(formula = MMO2(REST_USE_1, REST_USE_2, INJ_SEV_1,INJ_SEV_2) ~ 0 + AGE4_1+ DRINKING_1 + DRUGS_1 +AIR_BAG_1 +
-               ROLLOVER_1 +BODY_TYP_1+ AGE4_2 + DRINKING_2+  DRUGS_2  + AIR_BAG_2 + ROLLOVER_2+BODY_TYP_2 + MAN_COLL + DAY_WEEK,
-                  threshold.constraints = c(1,1,2,2),
-                  coef.constraints = c(1,1,2,2),
-                  link = mvprobit(),data = as.data.frame(pva_w1[6][[1]]))
-
-fmv11
-fmv21
-fmv31
-fmv41
-fmv51
-fmv61
-
-capture.output(c(summary(fmv1), summary(fmv2), summary(fmv3), summary(fmv4), summary(fmv5), summary(fmv6)), file = "/Users/cpf/Documents/paper/NHTSA/writting/pictures/allfarsfmv.txt" )
-capture.output(c(summary(fmv11), summary(fmv21), summary(fmv31), summary(fmv41), summary(fmv51), summary(fmv61)), file = "/Users/cpf/Documents/paper/NHTSA/writting/pictures/allfarsfmv1.txt" )
-```
-
-
-
-
-
 
 
 
